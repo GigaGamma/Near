@@ -30,14 +30,16 @@ net.createServer(function (socket) {
 			if (json.auth != null && json.auth.key != null && request.auth(json.auth.key)) {
 				var rt = request.type(json);
 				if (rt == "info") {
+					var i;
+					db.prepare("SELECT * FROM vehicles WHERE name=?").get(json.request.name, function (err, row) {
+						console.log(err);
+						i = row;
+					});
 					socket.write(JSON.stringify({
 						"response": {
-							"name": "vehicle0",
-							"ip": "123.456.789",
-							"ips": [
-								"otherip",
-								"otherip2"
-							]
+							"name": json.request.name,
+							"lat": i.lat,
+							"long": i.long
 						}
 					}));
 				} else if (rt == "update") {
@@ -48,6 +50,11 @@ net.createServer(function (socket) {
 					console.log("Vehicle Id: " + json.payload.vehicle);
 					console.log("Latitude: " + json.payload.lat);
 					console.log("Longitude: " + json.payload.long);
+
+					db.serialize(function () {
+						db.prepare("UPDATE vehicles SET lat=?, long=? WHERE name=?").run(json.payload.lat, json.payload.long, json.payload.vehicle);
+						//db.commit();
+					});
 				} else {
 					socket.write(JSON.stringify({
 						"response": "Request type unknown"
